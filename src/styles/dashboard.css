@@ -1,0 +1,264 @@
+* {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  background: #f4f6fb;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #1e3a8a;
+  color: white;
+  padding: 20px;
+}
+
+.logo {
+  font-size: 20px;
+  margin-bottom: 40px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sidebar li.active,
+.sidebar li:hover {
+  background: #2563eb;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Bar */
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.logout-btn {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+}
+
+/* Content */
+.content {
+  padding: 30px;
+}
+
+.content h1 {
+  margin-bottom: 10px;
+}
+
+/* Floating Buttons */
+.floating-buttons {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.floating-buttons a {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.whatsapp {
+  background: #25d366;
+}
+
+.call {
+  background: #6d96f0;
+}
+/* Voucher Dropdown */
+.voucher {
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.voucher-list {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding-left: 10px;
+}
+
+.voucher-list li {
+  font-size: 14px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.voucher-list li:hover {
+  background: #2563eb;
+}
+
+/* Scrollbar styling */
+.voucher-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.voucher-list::-webkit-scrollbar-thumb {
+  background: #93c5fd;
+  border-radius: 6px;
+}
+/* Voucher Form */
+.voucher-form {
+  background: #fff;
+  padding: 20px 24px;
+  border-radius: 10px;
+  max-width: 850px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.voucher-form h2 {
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.form-row div {
+  flex: 1;
+}
+
+.voucher-form label {
+  font-size: 13px;
+  color: #555;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.voucher-form input,
+.voucher-form select,
+.voucher-form textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+}
+
+.voucher-form textarea {
+  resize: none;
+  height: 70px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.save-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.power-btn {
+  background: #facc15;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Active menu */
+.sidebar ul li.active,
+.sidebar ul li:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.sidebar ul li {
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.sidebar ul li.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.voucher-form {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 600px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-row input,
+.form-row select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+textarea {
+  resize: none;
+  height: 80px;
+}
+
+.form-actions {
+  margin-top: 10px;
+}
+
+.save-btn {
+  background: #2563eb;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
