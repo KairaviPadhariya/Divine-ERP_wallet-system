@@ -5,15 +5,24 @@ import "../styles/auth.css";
 
 const Signin = () => {
   const navigate = useNavigate();
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = (e) => {
     e.preventDefault();
 
-    // 🔐 Fake role check (frontend only)
-    if (username === "admin") {
+    // 🔐 Fake role logic
+    let role = "user";
+    if (username.toLowerCase() === "admin") {
+      role = "admin";
+    }
+
+    // ✅ Store login info
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("role", role);
+
+    // ✅ Redirect correctly
+    if (role === "admin") {
       navigate("/admin-dashboard");
     } else {
       navigate("/user-dashboard");
