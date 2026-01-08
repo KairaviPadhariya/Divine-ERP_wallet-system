@@ -6,7 +6,7 @@ const AuthLayout = ({ children }) => {
       {/* Left Section */}
       <div className="auth-left">
         <div className="icon-box">👤+</div>
-        <h1>Join our exclusive community today.</h1>
+        <h1>Divine ERP</h1>
         <p>
           Experience a new standard of digital interaction. Create your
           account to access premium features, connect with peers, and

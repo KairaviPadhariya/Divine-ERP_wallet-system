@@ -11,7 +11,7 @@
 
 /* LEFT PANEL */
 .auth-left {
-  width: 55%;
+  width: 45%;
   padding: 80px;
   color: white;
   background: linear-gradient(135deg, #1e4ed8, #2563eb);
@@ -108,4 +108,13 @@
 .bottom-text span {
   color: #2563eb;
   cursor: pointer;
+}
+.auth-card textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  resize: none;
 }
