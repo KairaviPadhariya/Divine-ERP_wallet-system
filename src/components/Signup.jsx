@@ -2,8 +2,14 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import AuthLayout from "./AuthLayout";
 import "../styles/auth.css";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../firebase";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
+    const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: "",
     username: "",
@@ -21,21 +27,64 @@ const Signup = () => {
     });
   };
 
-  const handleSubmit = (e) => {
-  e.preventDefault(); // prevent default form submission
-  console.log("Account Created:", formData);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-  // Reload the page
-setFormData({
-  fullName: "",
-  username: "",
-  email: "",
-  phone: "",
-  password: "",
-  confirmPassword: "",
-  address: "",
-});
-}
+  const {
+    fullName,
+    username,
+    email,
+    phone,
+    password,
+    confirmPassword,
+    address,
+  } = formData;
+
+  // 1️⃣ Password validation
+  if (password !== confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  try {
+    // 2️⃣ Create user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    const user = userCredential.user;
+
+    // 3️⃣ Save user data in Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      fullName,
+      username,
+      email,
+      phone,
+      address,
+      role: "user", // default role
+      createdAt: serverTimestamp(),
+    });
+
+    alert("Account created successfully");
+    navigate("/"); // go to Signin page
+
+    // 4️⃣ Reset form
+    setFormData({
+      fullName: "",
+      username: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      address: "",
+    });
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
   return (
     <AuthLayout>
