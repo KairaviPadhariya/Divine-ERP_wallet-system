@@ -3,29 +3,63 @@ import { useState } from "react";
 import AuthLayout from "./AuthLayout";
 import "../styles/auth.css";
 
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../firebase";
+
+import { collection, query, where, getDocs } from "firebase/firestore";
+
 const Signin = () => {
   const navigate = useNavigate();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // 🔐 Fake role logic
-    let role = "user";
-    if (username.toLowerCase() === "admin") {
-      role = "admin";
-    }
+    try {
+      // 🔍 Find user by username
+      const q = query(
+        collection(db, "users"),
+        where("username", "==", username)
+      );
 
-    // ✅ Store login info
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("role", role);
+      const snapshot = await getDocs(q);
 
-    // ✅ Redirect correctly
-    if (role === "admin") {
-      navigate("/admin-dashboard");
-    } else {
-      navigate("/user-dashboard");
+      if (snapshot.empty) {
+        alert("Username not found ❌");
+        return;
+      }
+
+      // Get user data
+      const userDoc = snapshot.docs[0];
+      const userData = userDoc.data();
+      const email = userData.email;
+      const role = userData.role;
+
+      // 🔐 Login with email + password
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      // ✅ Save login info
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("role", role);
+      localStorage.setItem("uid", user.uid);
+
+      // 🔁 Redirect by role
+      if (role === "admin") {
+        navigate("/admin-dashboard");
+      } else {
+        navigate("/user-dashboard");
+      }
+
+    } catch (error) {
+      alert("Login failed: " + error.message);
     }
   };
 

@@ -262,3 +262,20 @@ textarea {
   border-radius: 8px;
   cursor: pointer;
 }
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.ledger-table th,
+.ledger-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.ledger-table th {
+  background: #f5f5f5;
+  text-align: left;
+}

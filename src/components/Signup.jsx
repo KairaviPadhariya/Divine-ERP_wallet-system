@@ -1,14 +1,23 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import AuthLayout from "./AuthLayout";
 import "../styles/auth.css";
+
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { useNavigate } from "react-router-dom";
+
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs
+} from "firebase/firestore";
 
 const Signup = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -27,68 +36,80 @@ const Signup = () => {
     });
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const {
-    fullName,
-    username,
-    email,
-    phone,
-    password,
-    confirmPassword,
-    address,
-  } = formData;
-
-  // 1️⃣ Password validation
-  if (password !== confirmPassword) {
-    alert("Passwords do not match");
-    return;
-  }
-
-  try {
-    // 2️⃣ Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-
-    const user = userCredential.user;
-
-    // 3️⃣ Save user data in Firestore
-    await setDoc(doc(db, "users", user.uid), {
+    const {
       fullName,
       username,
       email,
       phone,
+      password,
+      confirmPassword,
       address,
-      role: "user", // default role
-      createdAt: serverTimestamp(),
-    });
+    } = formData;
 
-    alert("Account created successfully");
-    navigate("/"); // go to Signin page
+    // 🔐 Password check
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
 
-    // 4️⃣ Reset form
-    setFormData({
-      fullName: "",
-      username: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      address: "",
-    });
+    try {
+      // 🔍 Check if username already exists
+      const q = query(
+        collection(db, "users"),
+        where("username", "==", username)
+      );
+      const snapshot = await getDocs(q);
 
-  } catch (error) {
-    alert(error.message);
-  }
-};
+      if (!snapshot.empty) {
+        alert("Username already taken. Choose another one.");
+        return;
+      }
+
+      // 🔐 Create user using Firebase Auth (email + password)
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      // 💾 Save user data in Firestore with UID as document ID
+      await setDoc(doc(db, "users", user.uid), {
+        fullName,
+        username,
+        email,
+        phone,
+        address,
+        role: "user",
+        createdAt: serverTimestamp(),
+      });
+
+      alert("Account created successfully ✅");
+      navigate("/"); // go to Sign In
+
+      // Reset form
+      setFormData({
+        fullName: "",
+        username: "",
+        email: "",
+        phone: "",
+        password: "",
+        confirmPassword: "",
+        address: "",
+      });
+
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
   return (
     <AuthLayout>
-<form className="auth-card" onSubmit={handleSubmit}>
+      <form className="auth-card" onSubmit={handleSubmit}>
         <h2>Create Account</h2>
 
         <input
@@ -97,6 +118,7 @@ const Signup = () => {
           placeholder="Full Name"
           value={formData.fullName}
           onChange={handleChange}
+          required
         />
 
         <input
@@ -105,6 +127,7 @@ const Signup = () => {
           placeholder="Username"
           value={formData.username}
           onChange={handleChange}
+          required
         />
 
         <input
@@ -113,6 +136,7 @@ const Signup = () => {
           placeholder="Email ID"
           value={formData.email}
           onChange={handleChange}
+          required
         />
 
         <input
@@ -129,6 +153,7 @@ const Signup = () => {
           placeholder="Password"
           value={formData.password}
           onChange={handleChange}
+          required
         />
 
         <input
@@ -137,6 +162,7 @@ const Signup = () => {
           placeholder="Confirm Password"
           value={formData.confirmPassword}
           onChange={handleChange}
+          required
         />
 
         <textarea
