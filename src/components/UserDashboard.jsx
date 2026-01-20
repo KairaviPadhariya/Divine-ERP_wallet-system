@@ -1,4 +1,4 @@
-import { auth} from "../firebase";
+import { auth } from "../firebase";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
@@ -17,12 +17,12 @@ import {
 const UserDashboard = () => {
   const navigate = useNavigate();
 
-useEffect(() => {
-  const user = auth.currentUser;
-  if (!user) {
-    navigate("/");
-  }
-}, []);
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      navigate("/");
+    }
+  }, []);
 
   const [walletEntries, setWalletEntries] = useState([]);
 
@@ -48,6 +48,35 @@ useEffect(() => {
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
+  };
+
+  const calculateLedger = () => {
+    let balance = 0;
+
+    const updatedEntries = walletEntries.map(entry => {
+      let debit = "";
+      let credit = "";
+
+      if (entry.type === "debit") {
+        balance -= entry.amount;
+        debit = entry.amount.toFixed(2);
+      } else {
+        balance += entry.amount;
+        credit = entry.amount.toFixed(2);
+      }
+
+      const absBal = Math.abs(balance).toFixed(2);
+      const suffix = balance >= 0 ? "Cr" : "Dr";
+
+      return {
+        ...entry,
+        debit,
+        credit,
+        balance: balance === 0 ? "0.00" : `${absBal} ${suffix}`
+      };
+    });
+
+    return updatedEntries.reverse();
   };
 
   return (
@@ -79,23 +108,25 @@ useEffect(() => {
                 <th>Narration</th>
                 <th>Debit</th>
                 <th>Credit</th>
+                <th>Balance</th>
               </tr>
             </thead>
 
             <tbody>
-              {walletEntries.map((item, index) => (
+              {calculateLedger().map((item, index) => (
                 <tr key={index}>
                   <td>{item.date}</td>
                   <td>{item.document}</td>
                   <td>{item.narration}</td>
-                  <td>{item.type === "debit" ? item.amount : ""}</td>
-                  <td>{item.type === "credit" ? item.amount : ""}</td>
+                  <td>{item.debit}</td>
+                  <td>{item.credit}</td>
+                  <td>{item.balance}</td>
                 </tr>
               ))}
 
               {walletEntries.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center" }}>
+                  <td colSpan="6" style={{ textAlign: "center" }}>
                     No wallet records found
                   </td>
                 </tr>
