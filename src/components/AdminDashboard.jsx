@@ -74,17 +74,20 @@ const AdminDashboard = () => {
     type: "credit" // Default to credit for Receipt
   });
 
+  const getVoucherType = (docType) => {
+    const creditTypes = ["Receipt", "Bank Receipt", "Rewards"];
+    return creditTypes.includes(docType) ? "credit" : "debit";
+  };
+
   const handleVoucherChange = (e) => {
     const { name, value } = e.target;
 
     setVoucherData((prev) => {
       const newData = { ...prev, [name]: value };
 
-      // Auto-set type based on voucherType selection (only if user changes voucherType)
+      // Auto-set type based on voucherType selection
       if (name === "voucherType") {
-        const creditTypes = ["Receipt", "Bank Receipt", "Rewards"];
-        const isCredit = creditTypes.includes(value);
-        newData.type = isCredit ? "credit" : "debit";
+        newData.type = getVoucherType(value);
       }
 
       return newData;
@@ -97,13 +100,18 @@ const AdminDashboard = () => {
       return;
     }
 
+    if (!voucherData.date || !voucherData.amount || !voucherData.narration) {
+      alert("Please fill all fields (Date, Amount, Narration)");
+      return;
+    }
+
     await addDoc(collection(db, "walletVouchers"), {
       userId: selectedUserId,
       date: voucherData.date,
       document: voucherData.voucherType,
       narration: voucherData.narration,
       amount: Number(voucherData.amount),
-      type: voucherData.type, // Use selected type
+      type: voucherData.type, // Automatically set
       createdBy: "admin",
       createdAt: Timestamp.now()
     });
@@ -260,7 +268,6 @@ const AdminDashboard = () => {
               ))}
             </select>
 
-
             <div className="form-row">
               <input
                 type="date"
@@ -286,17 +293,6 @@ const AdminDashboard = () => {
                 <option>Additional User</option>
                 <option>Mobile App Renewal</option>
                 <option>Additional Mobile Users</option>
-              </select>
-
-              {/* Transaction Type Selector */}
-              <select
-                name="type"
-                value={voucherData.type}
-                onChange={handleVoucherChange}
-                style={{ width: "120px" }}
-              >
-                <option value="credit">Credit</option>
-                <option value="debit">Debit</option>
               </select>
 
               <input
