@@ -42,7 +42,7 @@
 
 /* RIGHT PANEL */
 .auth-right {
-  width: 45%;
+  width: 55%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,6 +77,16 @@
   font-size: 14px;
 }
 
+.auth-card textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  resize: none;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -109,12 +119,50 @@
   color: #2563eb;
   cursor: pointer;
 }
-.auth-card textarea {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 14px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  font-size: 14px;
-  resize: none;
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .auth-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  /* Reduce Left Panel Size on Mobile */
+  .auth-left {
+    width: 100%;
+    padding: 40px 20px;
+    border-radius: 0 0 30px 30px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .auth-left h1 {
+    font-size: 32px;
+    margin-top: 20px;
+  }
+
+  .auth-left p {
+    font-size: 14px;
+  }
+
+  .auth-right {
+    width: 100%;
+    padding: 40px 20px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 400px;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  /* Make inputs pop a bit more on transparent/mobile bg if needed, or keep white card */
+  .auth-card {
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
 }

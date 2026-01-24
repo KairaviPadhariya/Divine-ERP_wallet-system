@@ -254,6 +254,10 @@
     height: auto;
   }
 
+  .topbar {
+    padding: 10px 15px;
+  }
+
   .sidebar {
     width: 100%;
     padding: 10px;
