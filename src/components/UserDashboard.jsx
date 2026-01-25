@@ -1,8 +1,10 @@
 import { auth } from "../firebase";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
 import "../styles/dashboard.css";
 import { useEffect, useState } from "react";
+import { getAuth } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -11,16 +13,18 @@ import {
   orderBy
 } from "firebase/firestore";
 
+
 const UserDashboard = () => {
   const navigate = useNavigate();
-  const [walletEntries, setWalletEntries] = useState([]);
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) {
       navigate("/");
     }
-  }, [navigate]);
+  }, []);
+
+  const [walletEntries, setWalletEntries] = useState([]);
 
   useEffect(() => {
     const fetchWallet = async () => {
@@ -35,11 +39,13 @@ const UserDashboard = () => {
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => doc.data());
+      // Sort newest first
+      data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setWalletEntries(data);
     };
 
     fetchWallet();
-  }, []);
+  }, [auth]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -61,14 +67,18 @@ const UserDashboard = () => {
         credit = entry.amount.toFixed(2);
       }
 
-      const absBal = Math.abs(balance).toFixed(2);
+      const formattedDebit = debit ? Number(debit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+      const formattedCredit = credit ? Number(credit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+
+      const absBal = Math.abs(balance);
       const suffix = balance >= 0 ? "Cr" : "Dr";
+      const formattedBal = absBal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       return {
         ...entry,
-        debit,
-        credit,
-        balance: balance === 0 ? "0.00" : `${absBal} ${suffix}`
+        debit: formattedDebit,
+        credit: formattedCredit,
+        balance: balance === 0 ? "0.00" : `${formattedBal} ${suffix}`
       };
     });
 
@@ -79,23 +89,23 @@ const UserDashboard = () => {
     <div className="dashboard-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="logo">Divine ERP</h2>
-          <button className="logout-btn" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-
+        <h2 className="logo">Divine ERP</h2>
         <ul>
           <li className="active">💰 Wallet</li>
         </ul>
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="main-content">
-        <h1 className="page-title">Wallet</h1>
+        <div className="topbar">
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
 
-        <div className="table-wrapper">
+        <div className="content">
+          <h1>Wallet</h1>
+
           <table className="ledger-table">
             <thead>
               <tr>
@@ -114,9 +124,9 @@ const UserDashboard = () => {
                   <td>{item.date}</td>
                   <td>{item.document}</td>
                   <td>{item.narration}</td>
-                  <td>{item.debit}</td>
-                  <td>{item.credit}</td>
-                  <td>{item.balance}</td>
+                  <td className="text-right">{item.debit}</td>
+                  <td className="text-right">{item.credit}</td>
+                  <td className="text-right">{item.balance}</td>
                 </tr>
               ))}
 
