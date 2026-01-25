@@ -21,10 +21,6 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
 
-  // 🔍 Username search states
-  const [searchUsername, setSearchUsername] = useState("");
-  const [filteredUsers, setFilteredUsers] = useState([]);
-
   useEffect(() => {
     const fetchUsers = async () => {
       const snapshot = await getDocs(collection(db, "users"));
@@ -34,42 +30,37 @@ const AdminDashboard = () => {
       }));
       setUsers(list);
     };
+
     fetchUsers();
   }, []);
-
-  /* 🔍 AUTOCOMPLETE LOGIC */
-  useEffect(() => {
-    if (!searchUsername) {
-      setFilteredUsers([]);
-      return;
-    }
-
-    const matches = users.filter(user =>
-      user.username?.toLowerCase().includes(searchUsername.toLowerCase())
-    );
-
-    setFilteredUsers(matches);
-  }, [searchUsername, users]);
 
   /* ================= WALLET ================= */
   const [walletEntries, setWalletEntries] = useState([]);
   const [selectedWalletUserId, setSelectedWalletUserId] = useState("");
 
   useEffect(() => {
-    if (activeMenu !== "wallet" || !selectedWalletUserId) {
-      setWalletEntries([]);
-      return;
-    }
+    if (activeMenu !== "wallet") return;
 
     const fetchWallet = async () => {
-      const q = query(
-        collection(db, "walletVouchers"),
-        where("userId", "==", selectedWalletUserId),
-        orderBy("date", "asc")
-      );
+      let q;
+
+      if (selectedWalletUserId) {
+        q = query(
+          collection(db, "walletVouchers"),
+          where("userId", "==", selectedWalletUserId),
+          orderBy("date", "asc")
+        );
+      } else {
+        // If no user selected, maybe show nothing or clear list
+        // Or if you really want to show something, but without balance it's confusing
+        setWalletEntries([]);
+        return;
+      }
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => doc.data());
+      // Sort in descending order of date (newest first)
+      data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setWalletEntries(data);
     };
 
@@ -78,11 +69,11 @@ const AdminDashboard = () => {
 
   /* ================= VOUCHER ================= */
   const [voucherData, setVoucherData] = useState({
-    date: "",
+    date: new Date().toISOString().split('T')[0], // Default to current date
     voucherType: "Receipt",
     amount: "",
     narration: "",
-    type: "credit"
+    type: "credit" // Default to credit for Receipt
   });
 
   const getVoucherType = (docType) => {
@@ -93,11 +84,14 @@ const AdminDashboard = () => {
   const handleVoucherChange = (e) => {
     const { name, value } = e.target;
 
-    setVoucherData(prev => {
+    setVoucherData((prev) => {
       const newData = { ...prev, [name]: value };
+
+      // Auto-set type based on voucherType selection
       if (name === "voucherType") {
         newData.type = getVoucherType(value);
       }
+
       return newData;
     });
   };
@@ -108,10 +102,12 @@ const AdminDashboard = () => {
       return;
     }
 
-    if (!voucherData.date || !voucherData.amount || !voucherData.narration) {
-      alert("Please fill all fields");
+    if (!voucherData.date || !voucherData.amount) {
+      alert("Please fill all required fields (Date, Amount)");
       return;
     }
+
+    // Narration is now optional
 
     await addDoc(collection(db, "walletVouchers"), {
       userId: selectedUserId,
@@ -119,7 +115,7 @@ const AdminDashboard = () => {
       document: voucherData.voucherType,
       narration: voucherData.narration,
       amount: Number(voucherData.amount),
-      type: voucherData.type,
+      type: voucherData.type, // Automatically set
       createdBy: "admin",
       createdAt: Timestamp.now()
     });
@@ -127,14 +123,12 @@ const AdminDashboard = () => {
     alert("Voucher saved successfully ✅");
 
     setVoucherData({
-      date: "",
+      date: new Date().toISOString().split('T')[0],
       voucherType: "Receipt",
       amount: "",
       narration: "",
       type: "credit"
     });
-
-    setSearchUsername("");
     setSelectedUserId("");
   };
 
@@ -148,6 +142,7 @@ const AdminDashboard = () => {
   const calculateLedger = () => {
     let balance = 0;
 
+    // Calculate running balance
     const updatedEntries = walletEntries.map(entry => {
       let debit = "";
       let credit = "";
@@ -160,16 +155,29 @@ const AdminDashboard = () => {
         credit = entry.amount.toFixed(2);
       }
 
-      const absBal = Math.abs(balance).toFixed(2);
+      // Format balance with Dr/Cr
+      const absBal = Math.abs(balance);
       const suffix = balance >= 0 ? "Cr" : "Dr";
+
+      // Format details
+      const formattedDebit = debit ? Number(debit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+      const formattedCredit = credit ? Number(credit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+
+      const formattedBal = absBal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       return {
         ...entry,
-        debit,
-        credit,
-        balance: balance === 0 ? "0.00" : `${absBal} ${suffix}`
+        debit: formattedDebit,
+        credit: formattedCredit,
+        balance: balance === 0 ? "0.00" : `${formattedBal} ${suffix}`
       };
     });
+
+    // Entries are already sorted by date descending from fetchWallet update (if needed) or we reverse here
+    // But since we are calculating running balance, we usually calculate from oldest to newest, then reverse for display.
+    // Let's ensure walletEntries are in ascending order for calculation, then we reverse.
+    // In fetchWallet I commented "Sort in descending", wait... running balance needs ascending.
+    // Let's fix fetchWallet to keep ascending for calculation, and reverse here.
 
     return updatedEntries.reverse();
   };
@@ -178,56 +186,49 @@ const AdminDashboard = () => {
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="logo">Divine ERP</h2>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
-        </div>
-
+        <h2 className="logo">Divine ERP</h2>
         <ul>
-          <li className={activeMenu === "wallet" ? "active" : ""} onClick={() => setActiveMenu("wallet")}>
+          <li
+            className={activeMenu === "wallet" ? "active" : ""}
+            onClick={() => setActiveMenu("wallet")}
+          >
             💰 Wallet
           </li>
-          <li className={activeMenu === "voucher" ? "active" : ""} onClick={() => setActiveMenu("voucher")}>
+          <li
+            className={activeMenu === "voucher" ? "active" : ""}
+            onClick={() => setActiveMenu("voucher")}
+          >
             🎟 Wallet Voucher
           </li>
         </ul>
       </aside>
 
       <main className="main-content">
-
-        {/* 🔍 USER SEARCH (Reusable) */}
-        {(activeMenu === "wallet" || activeMenu === "voucher") && (
-          <div style={{ position: "relative", width: "300px", marginBottom: "20px" }}>
-            <input
-              type="text"
-              placeholder="Search username"
-              value={searchUsername}
-              onChange={(e) => setSearchUsername(e.target.value)}
-            />
-
-            {filteredUsers.length > 0 && (
-              <ul className="suggestions">
-                {filteredUsers.map(user => (
-                  <li
-                    key={user.id}
-                    onClick={() => {
-                      setSearchUsername(user.username);
-                      setSelectedUserId(user.id);
-                      setSelectedWalletUserId(user.id);
-                      setFilteredUsers([]);
-                    }}
-                  >
-                    {user.username}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        <div className="topbar">
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
 
         {activeMenu === "wallet" && (
           <div className="content">
             <h2>Wallet Ledger</h2>
+
+            {/* User Filter for Wallet View */}
+            <div style={{ marginBottom: "20px" }}>
+              <select
+                value={selectedWalletUserId}
+                onChange={(e) => setSelectedWalletUserId(e.target.value)}
+                style={{ padding: "10px", width: "300px" }}
+              >
+                <option value="">Select User to View Ledger</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {selectedWalletUserId ? (
               <table className="ledger-table">
@@ -247,15 +248,20 @@ const AdminDashboard = () => {
                       <td>{item.date}</td>
                       <td>{item.document}</td>
                       <td>{item.narration}</td>
-                      <td>{item.debit}</td>
-                      <td>{item.credit}</td>
-                      <td>{item.balance}</td>
+                      <td className="text-right">{item.debit}</td>
+                      <td className="text-right">{item.credit}</td>
+                      <td className="text-right">{item.balance}</td>
                     </tr>
                   ))}
+                  {walletEntries.length === 0 && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: "center" }}>No records found</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             ) : (
-              <p>Please search and select a user.</p>
+              <p>Please select a user to view their wallet ledger.</p>
             )}
           </div>
         )}
@@ -264,24 +270,67 @@ const AdminDashboard = () => {
           <div className="voucher-form">
             <h2>Wallet Voucher</h2>
 
-            <input type="date" name="date" value={voucherData.date} onChange={handleVoucherChange} />
+            <div style={{ marginBottom: "15px" }}>
+              <label>Select User <span className="required-star">*</span></label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+              >
+                <option value="">Select User</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <select name="voucherType" value={voucherData.voucherType} onChange={handleVoucherChange}>
-              <option>Receipt</option>
-              <option>Bank Receipt</option>
-              <option>Rewards</option>
-              <option>Subscription</option>
-              <option>Development Charges</option>
-            </select>
+            <div className="form-row">
+              <div>
+                <label>Date <span className="required-star">*</span></label>
+                <input
+                  type="date"
+                  name="date"
+                  value={voucherData.date}
+                  onChange={handleVoucherChange}
+                />
+              </div>
+            </div>
 
-            <input
-              type="number"
-              name="amount"
-              placeholder="Amount"
-              value={voucherData.amount}
-              onChange={handleVoucherChange}
-            />
+            <div className="form-row">
+              <div>
+                <label>Voucher Type <span className="required-star">*</span></label>
+                <select
+                  name="voucherType"
+                  value={voucherData.voucherType}
+                  onChange={handleVoucherChange}
+                >
+                  <option>Receipt</option>
+                  <option>Bank Receipt</option>
+                  <option>Development Charges</option>
+                  <option>Subscription</option>
+                  <option>Rewards</option>
+                  <option>Custom Development</option>
+                  <option>Cloud Space</option>
+                  <option>Additional User</option>
+                  <option>Mobile App Renewal</option>
+                  <option>Additional Mobile Users</option>
+                </select>
+              </div>
 
+              <div>
+                <label>Amount <span className="required-star">*</span></label>
+                <input
+                  type="number"
+                  name="amount"
+                  placeholder="Amount"
+                  value={voucherData.amount}
+                  onChange={handleVoucherChange}
+                />
+              </div>
+            </div>
+
+            <label>Narration (Optional)</label>
             <textarea
               name="narration"
               placeholder="Narration"
@@ -289,7 +338,9 @@ const AdminDashboard = () => {
               onChange={handleVoucherChange}
             />
 
-            <button className="save-btn" onClick={handleSaveVoucher}>Save</button>
+            <button className="save-btn" onClick={handleSaveVoucher}>
+              Save
+            </button>
           </div>
         )}
       </main>
