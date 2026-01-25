@@ -1,10 +1,8 @@
 import { auth } from "../firebase";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
 import "../styles/dashboard.css";
 import { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -13,18 +11,16 @@ import {
   orderBy
 } from "firebase/firestore";
 
-
 const UserDashboard = () => {
   const navigate = useNavigate();
+  const [walletEntries, setWalletEntries] = useState([]);
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) {
       navigate("/");
     }
-  }, []);
-
-  const [walletEntries, setWalletEntries] = useState([]);
+  }, [navigate]);
 
   useEffect(() => {
     const fetchWallet = async () => {
@@ -43,7 +39,7 @@ const UserDashboard = () => {
     };
 
     fetchWallet();
-  }, [auth]);
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -83,23 +79,23 @@ const UserDashboard = () => {
     <div className="dashboard-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
-          <li className="active">💰 Wallet</li>
-        </ul>
-      </aside>
-
-      {/* Main */}
-      <main className="main-content">
-        <div className="topbar">
+        <div className="sidebar-header">
+          <h2 className="logo">Divine ERP</h2>
           <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
         </div>
 
-        <div className="content">
-          <h1>Wallet</h1>
+        <ul>
+          <li className="active">💰 Wallet</li>
+        </ul>
+      </aside>
 
+      {/* Main Content */}
+      <main className="main-content">
+        <h1 className="page-title">Wallet</h1>
+
+        <div className="table-wrapper">
           <table className="ledger-table">
             <thead>
               <tr>
