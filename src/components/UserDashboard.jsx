@@ -59,13 +59,13 @@ const UserDashboard = () => {
 
       if (entry.type === "debit") {
         balance -= entry.amount;
-        debit = entry.amount.toFixed(2);
+        debit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       } else {
         balance += entry.amount;
-        credit = entry.amount.toFixed(2);
+        credit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
-      const absBal = Math.abs(balance).toFixed(2);
+      const absBal = Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const suffix = balance >= 0 ? "Cr" : "Dr";
 
       return {
@@ -83,8 +83,14 @@ const UserDashboard = () => {
     <div className="dashboard-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="logo" style={{ marginBottom: 0 }}>Divine ERP</h2>
+          {/* Mobile Logout Button - Visible only on mobile via CSS */}
+          <button className="mobile-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+        <ul style={{ marginTop: '20px' }}>
           <li className="active">💰 Wallet</li>
         </ul>
       </aside>

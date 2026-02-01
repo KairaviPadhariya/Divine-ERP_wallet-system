@@ -247,6 +247,18 @@
   text-align: left;
 }
 
+/* Mobile Logout - Hidden by default on desktop */
+.mobile-logout-btn {
+  display: none;
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 /* Response Design */
 @media (max-width: 768px) {
   .dashboard-container {
@@ -256,11 +268,30 @@
 
   .topbar {
     padding: 10px 15px;
+    /* Hide the topbar logout on mobile if desired, or keep both? 
+       Based on screenshot, the top header is blue and has logout. 
+       In our layout, sidebar is the blue part. 
+    */
+    display: none; /* Hide topbar entirely on mobile to match "phone view" request where sidebar becomes header? */
   }
 
+  /* Since topbar is hidden, we need to ensure the sidebar acts as the header */
   .sidebar {
     width: 100%;
-    padding: 10px;
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Show the mobile logout button in the sidebar header */
+  .mobile-logout-btn {
+    display: block;
+  }
+
+  /* Adjust logo/header row in sidebar */
+  .sidebar > div {
+    width: 100%;
+    margin-bottom: 10px;
   }
 
   .sidebar ul {
@@ -268,11 +299,15 @@
     overflow-x: auto;
     gap: 10px;
     margin-bottom: 0;
+    margin-top: 0 !important; /* Override inline style */
+    padding-bottom: 5px; /* Space for scrollbar */
   }
 
   .sidebar li {
     white-space: nowrap;
     margin-bottom: 0;
+    font-size: 14px;
+    padding: 8px 12px;
   }
 
   .content {

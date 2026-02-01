@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/dashboard.css";
+import UserSearchDropdown from "./UserSearchDropdown";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const AdminDashboard = () => {
 
   /* ================= VOUCHER ================= */
   const [voucherData, setVoucherData] = useState({
-    date: "",
+    date: new Date().toISOString().split("T")[0], // Default to today
     voucherType: "Receipt",
     amount: "",
     narration: "",
@@ -100,8 +101,8 @@ const AdminDashboard = () => {
       return;
     }
 
-    if (!voucherData.date || !voucherData.amount || !voucherData.narration) {
-      alert("Please fill all fields (Date, Amount, Narration)");
+    if (!voucherData.date || !voucherData.amount) {
+      alert("Please fill all compulsory fields (Date, Amount)");
       return;
     }
 
@@ -119,7 +120,7 @@ const AdminDashboard = () => {
     alert("Voucher saved successfully ✅");
 
     setVoucherData({
-      date: "",
+      date: new Date().toISOString().split("T")[0],
       voucherType: "Receipt",
       amount: "",
       narration: "",
@@ -145,14 +146,14 @@ const AdminDashboard = () => {
 
       if (entry.type === "debit") {
         balance -= entry.amount;
-        debit = entry.amount.toFixed(2);
+        debit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       } else {
         balance += entry.amount;
-        credit = entry.amount.toFixed(2);
+        credit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       // Format balance with Dr/Cr
-      const absBal = Math.abs(balance).toFixed(2);
+      const absBal = Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const suffix = balance >= 0 ? "Cr" : "Dr";
 
       return {
@@ -171,8 +172,14 @@ const AdminDashboard = () => {
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="logo" style={{ marginBottom: 0 }}>Divine ERP</h2>
+          {/* Mobile Logout Button - Visible only on mobile via CSS */}
+          <button className="mobile-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+        <ul style={{ marginTop: '20px' }}>
           <li
             className={activeMenu === "wallet" ? "active" : ""}
             onClick={() => setActiveMenu("wallet")}
@@ -200,19 +207,13 @@ const AdminDashboard = () => {
             <h2>Wallet Ledger</h2>
 
             {/* User Filter for Wallet View */}
-            <div style={{ marginBottom: "20px" }}>
-              <select
-                value={selectedWalletUserId}
-                onChange={(e) => setSelectedWalletUserId(e.target.value)}
-                style={{ padding: "10px", width: "300px" }}
-              >
-                <option value="">Select User to View Ledger</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.email}
-                  </option>
-                ))}
-              </select>
+            <div style={{ marginBottom: "20px", maxWidth: "400px" }}>
+              <UserSearchDropdown
+                users={users}
+                selectedUserId={selectedWalletUserId}
+                onSelectUser={(id) => setSelectedWalletUserId(id)}
+                placeholder="Select User to View Ledger"
+              />
             </div>
 
             {selectedWalletUserId ? (
@@ -255,61 +256,70 @@ const AdminDashboard = () => {
           <div className="voucher-form">
             <h2>Wallet Voucher</h2>
 
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-            >
-              <option value="">Select User</option>
-
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name || user.email}
-                </option>
-              ))}
-            </select>
-
-            <div className="form-row">
-              <input
-                type="date"
-                name="date"
-                value={voucherData.date}
-                onChange={handleVoucherChange}
+            <div style={{ marginBottom: "15px" }}>
+              <label style={{ marginBottom: '5px', display: 'block', color: '#555', fontSize: '13px' }}>Select User *</label>
+              <UserSearchDropdown
+                users={users}
+                selectedUserId={selectedUserId}
+                onSelectUser={(id) => setSelectedUserId(id)}
+                placeholder="Search or select username"
               />
             </div>
 
             <div className="form-row">
-              <select
-                name="voucherType"
-                value={voucherData.voucherType}
-                onChange={handleVoucherChange}
-              >
-                <option>Receipt</option>
-                <option>Bank Receipt</option>
-                <option>Development Charges</option>
-                <option>Subscription</option>
-                <option>Rewards</option>
-                <option>Custom Development</option>
-                <option>Cloud Space</option>
-                <option>Additional User</option>
-                <option>Mobile App Renewal</option>
-                <option>Additional Mobile Users</option>
-              </select>
+              <div style={{ flex: '0 0 auto' }}>
+                <label>Date *</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={voucherData.date}
+                  onChange={handleVoucherChange}
+                />
+              </div>
+            </div>
 
-              <input
-                type="number"
-                name="amount"
-                placeholder="Amount"
-                value={voucherData.amount}
+            <div className="form-row">
+              <div>
+                <label>Voucher Type *</label>
+                <select
+                  name="voucherType"
+                  value={voucherData.voucherType}
+                  onChange={handleVoucherChange}
+                >
+                  <option>Receipt</option>
+                  <option>Bank Receipt</option>
+                  <option>Development Charges</option>
+                  <option>Subscription</option>
+                  <option>Rewards</option>
+                  <option>Custom Development</option>
+                  <option>Cloud Space</option>
+                  <option>Additional User</option>
+                  <option>Mobile App Renewal</option>
+                  <option>Additional Mobile Users</option>
+                </select>
+              </div>
+
+              <div>
+                <label>Amount *</label>
+                <input
+                  type="number"
+                  name="amount"
+                  placeholder="Amount"
+                  value={voucherData.amount}
+                  onChange={handleVoucherChange}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "14px" }}>
+              <label>Narration</label>
+              <textarea
+                name="narration"
+                placeholder="Narration"
+                value={voucherData.narration}
                 onChange={handleVoucherChange}
               />
             </div>
-
-            <textarea
-              name="narration"
-              placeholder="Narration"
-              value={voucherData.narration}
-              onChange={handleVoucherChange}
-            />
 
             <button className="save-btn" onClick={handleSaveVoucher}>
               Save
