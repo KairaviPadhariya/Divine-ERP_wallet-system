@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/dashboard.css";
+import UserSearchDropdown from "./UserSearchDropdown";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -59,8 +60,6 @@ const AdminDashboard = () => {
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => doc.data());
-      // Sort in descending order of date (newest first)
-      data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setWalletEntries(data);
     };
 
@@ -69,7 +68,7 @@ const AdminDashboard = () => {
 
   /* ================= VOUCHER ================= */
   const [voucherData, setVoucherData] = useState({
-    date: new Date().toISOString().split('T')[0], // Default to current date
+    date: new Date().toISOString().split("T")[0], // Default to today
     voucherType: "Receipt",
     amount: "",
     narration: "",
@@ -103,11 +102,9 @@ const AdminDashboard = () => {
     }
 
     if (!voucherData.date || !voucherData.amount) {
-      alert("Please fill all required fields (Date, Amount)");
+      alert("Please fill all compulsory fields (Date, Amount)");
       return;
     }
-
-    // Narration is now optional
 
     await addDoc(collection(db, "walletVouchers"), {
       userId: selectedUserId,
@@ -123,7 +120,7 @@ const AdminDashboard = () => {
     alert("Voucher saved successfully ✅");
 
     setVoucherData({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       voucherType: "Receipt",
       amount: "",
       narration: "",
@@ -149,36 +146,25 @@ const AdminDashboard = () => {
 
       if (entry.type === "debit") {
         balance -= entry.amount;
-        debit = entry.amount.toFixed(2);
+        debit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       } else {
         balance += entry.amount;
-        credit = entry.amount.toFixed(2);
+        credit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       // Format balance with Dr/Cr
-      const absBal = Math.abs(balance);
+      const absBal = Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const suffix = balance >= 0 ? "Cr" : "Dr";
-
-      // Format details
-      const formattedDebit = debit ? Number(debit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-      const formattedCredit = credit ? Number(credit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-
-      const formattedBal = absBal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       return {
         ...entry,
-        debit: formattedDebit,
-        credit: formattedCredit,
-        balance: balance === 0 ? "0.00" : `${formattedBal} ${suffix}`
+        debit,
+        credit,
+        balance: balance === 0 ? "0.00" : `${absBal} ${suffix}`
       };
     });
 
-    // Entries are already sorted by date descending from fetchWallet update (if needed) or we reverse here
-    // But since we are calculating running balance, we usually calculate from oldest to newest, then reverse for display.
-    // Let's ensure walletEntries are in ascending order for calculation, then we reverse.
-    // In fetchWallet I commented "Sort in descending", wait... running balance needs ascending.
-    // Let's fix fetchWallet to keep ascending for calculation, and reverse here.
-
+    // CHANGE: Reverse for display (Newest First)
     return updatedEntries.reverse();
   };
 
@@ -186,8 +172,14 @@ const AdminDashboard = () => {
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="logo" style={{ marginBottom: 0 }}>Divine ERP</h2>
+          {/* Mobile Logout Button - Visible only on mobile via CSS */}
+          <button className="mobile-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+        <ul style={{ marginTop: '20px' }}>
           <li
             className={activeMenu === "wallet" ? "active" : ""}
             onClick={() => setActiveMenu("wallet")}
@@ -215,19 +207,13 @@ const AdminDashboard = () => {
             <h2>Wallet Ledger</h2>
 
             {/* User Filter for Wallet View */}
-            <div style={{ marginBottom: "20px" }}>
-              <select
-                value={selectedWalletUserId}
-                onChange={(e) => setSelectedWalletUserId(e.target.value)}
-                style={{ padding: "10px", width: "300px" }}
-              >
-                <option value="">Select User to View Ledger</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.email}
-                  </option>
-                ))}
-              </select>
+            <div style={{ marginBottom: "20px", maxWidth: "400px" }}>
+              <UserSearchDropdown
+                users={users}
+                selectedUserId={selectedWalletUserId}
+                onSelectUser={(id) => setSelectedWalletUserId(id)}
+                placeholder="Select User to View Ledger"
+              />
             </div>
 
             {selectedWalletUserId ? (
@@ -248,9 +234,9 @@ const AdminDashboard = () => {
                       <td>{item.date}</td>
                       <td>{item.document}</td>
                       <td>{item.narration}</td>
-                      <td className="text-right">{item.debit}</td>
-                      <td className="text-right">{item.credit}</td>
-                      <td className="text-right">{item.balance}</td>
+                      <td>{item.debit}</td>
+                      <td>{item.credit}</td>
+                      <td>{item.balance}</td>
                     </tr>
                   ))}
                   {walletEntries.length === 0 && (
@@ -271,23 +257,18 @@ const AdminDashboard = () => {
             <h2>Wallet Voucher</h2>
 
             <div style={{ marginBottom: "15px" }}>
-              <label>Select User <span className="required-star">*</span></label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-              >
-                <option value="">Select User</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.email}
-                  </option>
-                ))}
-              </select>
+              <label style={{ marginBottom: '5px', display: 'block', color: '#555', fontSize: '13px' }}>Select User *</label>
+              <UserSearchDropdown
+                users={users}
+                selectedUserId={selectedUserId}
+                onSelectUser={(id) => setSelectedUserId(id)}
+                placeholder="Search or select username"
+              />
             </div>
 
             <div className="form-row">
-              <div>
-                <label>Date <span className="required-star">*</span></label>
+              <div style={{ flex: '0 0 auto' }}>
+                <label>Date *</label>
                 <input
                   type="date"
                   name="date"
@@ -299,7 +280,7 @@ const AdminDashboard = () => {
 
             <div className="form-row">
               <div>
-                <label>Voucher Type <span className="required-star">*</span></label>
+                <label>Voucher Type *</label>
                 <select
                   name="voucherType"
                   value={voucherData.voucherType}
@@ -319,7 +300,7 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label>Amount <span className="required-star">*</span></label>
+                <label>Amount *</label>
                 <input
                   type="number"
                   name="amount"
@@ -330,13 +311,15 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <label>Narration (Optional)</label>
-            <textarea
-              name="narration"
-              placeholder="Narration"
-              value={voucherData.narration}
-              onChange={handleVoucherChange}
-            />
+            <div style={{ marginBottom: "14px" }}>
+              <label>Narration</label>
+              <textarea
+                name="narration"
+                placeholder="Narration"
+                value={voucherData.narration}
+                onChange={handleVoucherChange}
+              />
+            </div>
 
             <button className="save-btn" onClick={handleSaveVoucher}>
               Save
