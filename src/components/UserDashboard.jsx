@@ -39,8 +39,6 @@ const UserDashboard = () => {
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => doc.data());
-      // Sort newest first
-      data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setWalletEntries(data);
     };
 
@@ -61,24 +59,20 @@ const UserDashboard = () => {
 
       if (entry.type === "debit") {
         balance -= entry.amount;
-        debit = entry.amount.toFixed(2);
+        debit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       } else {
         balance += entry.amount;
-        credit = entry.amount.toFixed(2);
+        credit = entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
-      const formattedDebit = debit ? Number(debit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-      const formattedCredit = credit ? Number(credit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-
-      const absBal = Math.abs(balance);
+      const absBal = Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const suffix = balance >= 0 ? "Cr" : "Dr";
-      const formattedBal = absBal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       return {
         ...entry,
-        debit: formattedDebit,
-        credit: formattedCredit,
-        balance: balance === 0 ? "0.00" : `${formattedBal} ${suffix}`
+        debit,
+        credit,
+        balance: balance === 0 ? "0.00" : `${absBal} ${suffix}`
       };
     });
 
@@ -89,8 +83,14 @@ const UserDashboard = () => {
     <div className="dashboard-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="logo" style={{ marginBottom: 0 }}>Divine ERP</h2>
+          {/* Mobile Logout Button - Visible only on mobile via CSS */}
+          <button className="mobile-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+        <ul style={{ marginTop: '20px' }}>
           <li className="active">💰 Wallet</li>
         </ul>
       </aside>
@@ -124,9 +124,9 @@ const UserDashboard = () => {
                   <td>{item.date}</td>
                   <td>{item.document}</td>
                   <td>{item.narration}</td>
-                  <td className="text-right">{item.debit}</td>
-                  <td className="text-right">{item.credit}</td>
-                  <td className="text-right">{item.balance}</td>
+                  <td>{item.debit}</td>
+                  <td>{item.credit}</td>
+                  <td>{item.balance}</td>
                 </tr>
               ))}
 
