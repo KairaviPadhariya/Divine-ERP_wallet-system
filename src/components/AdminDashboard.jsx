@@ -15,11 +15,15 @@ import "../styles/dashboard.css";
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
-  const [activeMenu, setActiveMenu] = useState("");
+  /* ================= MENU ================= */
+  const [activeMenu, setActiveMenu] = useState("wallet");
 
   /* ================= USERS ================= */
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [searchUsername, setSearchUsername] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -29,85 +33,77 @@ const AdminDashboard = () => {
         ...doc.data()
       }));
       setUsers(list);
+      setFilteredUsers(list);
     };
-
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (!searchUsername.trim()) {
+      setFilteredUsers(users); // 🔥 show all users on first click
+      return;
+    }
+
+    setFilteredUsers(
+      users.filter(u =>
+        u.username?.toLowerCase().includes(searchUsername.toLowerCase())
+      )
+    );
+  }, [searchUsername, users]);
+
   /* ================= WALLET ================= */
   const [walletEntries, setWalletEntries] = useState([]);
-  const [selectedWalletUserId, setSelectedWalletUserId] = useState("");
 
   useEffect(() => {
-    if (activeMenu !== "wallet") return;
+    if (activeMenu !== "wallet" || !selectedUserId) {
+      setWalletEntries([]);
+      return;
+    }
 
     const fetchWallet = async () => {
-      let q;
-
-      if (selectedWalletUserId) {
-        q = query(
-          collection(db, "walletVouchers"),
-          where("userId", "==", selectedWalletUserId),
-          orderBy("date", "asc")
-        );
-      } else {
-        // If no user selected, maybe show nothing or clear list
-        // Or if you really want to show something, but without balance it's confusing
-        setWalletEntries([]);
-        return;
-      }
-
+      const q = query(
+        collection(db, "walletVouchers"),
+        where("userId", "==", selectedUserId),
+        orderBy("date", "asc")
+      );
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => doc.data());
-      // Sort in descending order of date (newest first)
-      data.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setWalletEntries(data);
+      setWalletEntries(snapshot.docs.map(doc => doc.data()));
     };
 
     fetchWallet();
-  }, [activeMenu, selectedWalletUserId]);
+  }, [activeMenu, selectedUserId]);
 
   /* ================= VOUCHER ================= */
   const [voucherData, setVoucherData] = useState({
-    date: new Date().toISOString().split('T')[0], // Default to current date
+    date: "",
     voucherType: "Receipt",
     amount: "",
     narration: "",
-    type: "credit" // Default to credit for Receipt
+    type: "credit"
   });
 
-  const getVoucherType = (docType) => {
-    const creditTypes = ["Receipt", "Bank Receipt", "Rewards"];
-    return creditTypes.includes(docType) ? "credit" : "debit";
-  };
+  const getVoucherType = (docType) =>
+    ["Receipt", "Bank Receipt", "Rewards"].includes(docType)
+      ? "credit"
+      : "debit";
 
   const handleVoucherChange = (e) => {
     const { name, value } = e.target;
 
-    setVoucherData((prev) => {
-      const newData = { ...prev, [name]: value };
-
-      // Auto-set type based on voucherType selection
+    setVoucherData(prev => {
+      const updated = { ...prev, [name]: value };
       if (name === "voucherType") {
-        newData.type = getVoucherType(value);
+        updated.type = getVoucherType(value);
       }
-
-      return newData;
+      return updated;
     });
   };
 
   const handleSaveVoucher = async () => {
-    if (!selectedUserId) {
-      alert("Please select a user");
+    if (!selectedUserId || !voucherData.date || !voucherData.amount) {
+      alert("Please fill all required fields");
       return;
     }
-
-    if (!voucherData.date || !voucherData.amount) {
-      alert("Please fill all required fields (Date, Amount)");
-      return;
-    }
-
-    // Narration is now optional
 
     await addDoc(collection(db, "walletVouchers"), {
       userId: selectedUserId,
@@ -115,7 +111,7 @@ const AdminDashboard = () => {
       document: voucherData.voucherType,
       narration: voucherData.narration,
       amount: Number(voucherData.amount),
-      type: voucherData.type, // Automatically set
+      type: voucherData.type,
       createdBy: "admin",
       createdAt: Timestamp.now()
     });
@@ -123,12 +119,14 @@ const AdminDashboard = () => {
     alert("Voucher saved successfully ✅");
 
     setVoucherData({
-      date: new Date().toISOString().split('T')[0],
+      date: "",
       voucherType: "Receipt",
       amount: "",
       narration: "",
       type: "credit"
     });
+
+    setSearchUsername("");
     setSelectedUserId("");
   };
 
@@ -142,127 +140,132 @@ const AdminDashboard = () => {
   const calculateLedger = () => {
     let balance = 0;
 
-    // Calculate running balance
-    const updatedEntries = walletEntries.map(entry => {
-      let debit = "";
-      let credit = "";
+    return walletEntries
+      .map(entry => {
+        let debit = "";
+        let credit = "";
 
-      if (entry.type === "debit") {
-        balance -= entry.amount;
-        debit = entry.amount.toFixed(2);
-      } else {
-        balance += entry.amount;
-        credit = entry.amount.toFixed(2);
-      }
+        if (entry.type === "debit") {
+          balance -= entry.amount;
+          debit = entry.amount.toFixed(2);
+        } else {
+          balance += entry.amount;
+          credit = entry.amount.toFixed(2);
+        }
 
-      // Format balance with Dr/Cr
-      const absBal = Math.abs(balance);
-      const suffix = balance >= 0 ? "Cr" : "Dr";
-
-      // Format details
-      const formattedDebit = debit ? Number(debit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-      const formattedCredit = credit ? Number(credit).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-
-      const formattedBal = absBal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-      return {
-        ...entry,
-        debit: formattedDebit,
-        credit: formattedCredit,
-        balance: balance === 0 ? "0.00" : `${formattedBal} ${suffix}`
-      };
-    });
-
-    // Entries are already sorted by date descending from fetchWallet update (if needed) or we reverse here
-    // But since we are calculating running balance, we usually calculate from oldest to newest, then reverse for display.
-    // Let's ensure walletEntries are in ascending order for calculation, then we reverse.
-    // In fetchWallet I commented "Sort in descending", wait... running balance needs ascending.
-    // Let's fix fetchWallet to keep ascending for calculation, and reverse here.
-
-    return updatedEntries.reverse();
+        return {
+          ...entry,
+          debit,
+          credit,
+          balance: balance.toFixed(2)
+        };
+      })
+      .reverse();
   };
+
+  /* ================= SHARED USER SEARCH ================= */
+  const UserSearch = () => (
+    <div
+      className="user-select-container"
+      onFocus={() => setShowSuggestions(true)}
+      onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+    >
+      <input
+        type="text"
+        placeholder="Search or select username"
+        value={searchUsername}
+        onChange={(e) => setSearchUsername(e.target.value)}
+      />
+
+      {showSuggestions && (
+        <ul className="suggestions">
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map(user => (
+              <li
+                key={user.id}
+                onMouseDown={() => {
+                  setSearchUsername(user.username);
+                  setSelectedUserId(user.id);
+                  setShowSuggestions(false);
+                }}
+              >
+                {user.username}
+              </li>
+            ))
+          ) : (
+            <li className="no-results">No users found</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
 
   /* ================= UI ================= */
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
-        <h2 className="logo">Divine ERP</h2>
-        <ul>
-          <li
-            className={activeMenu === "wallet" ? "active" : ""}
-            onClick={() => setActiveMenu("wallet")}
-          >
-            💰 Wallet
-          </li>
-          <li
-            className={activeMenu === "voucher" ? "active" : ""}
-            onClick={() => setActiveMenu("voucher")}
-          >
-            🎟 Wallet Voucher
-          </li>
-        </ul>
-      </aside>
+  <div className="sidebar-header">
+    <h2 className="logo">Divine ERP</h2>
+
+    <button className="logout-btn" onClick={handleLogout}>
+      Logout
+    </button>
+  </div>
+
+  <ul>
+    <li
+      className={activeMenu === "wallet" ? "active" : ""}
+      onClick={() => setActiveMenu("wallet")}
+    >
+      💰 Wallet
+    </li>
+    <li
+      className={activeMenu === "voucher" ? "active" : ""}
+      onClick={() => setActiveMenu("voucher")}
+    >
+      🎟 Wallet Voucher
+    </li>
+  </ul>
+</aside>
+
 
       <main className="main-content">
-        <div className="topbar">
-          <button className="logout-btn" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
 
         {activeMenu === "wallet" && (
-          <div className="content">
-            <h2>Wallet Ledger</h2>
+          <div className="ledger-wrapper">
+            <div className="content">
+              <h2>Wallet Ledger</h2>
 
-            {/* User Filter for Wallet View */}
-            <div style={{ marginBottom: "20px" }}>
-              <select
-                value={selectedWalletUserId}
-                onChange={(e) => setSelectedWalletUserId(e.target.value)}
-                style={{ padding: "10px", width: "300px" }}
-              >
-                <option value="">Select User to View Ledger</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.email}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <label>Select User *</label>
+              <UserSearch />
 
-            {selectedWalletUserId ? (
-              <table className="ledger-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Document</th>
-                    <th>Narration</th>
-                    <th>Debit</th>
-                    <th>Credit</th>
-                    <th>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {calculateLedger().map((item, i) => (
-                    <tr key={i}>
-                      <td>{item.date}</td>
-                      <td>{item.document}</td>
-                      <td>{item.narration}</td>
-                      <td className="text-right">{item.debit}</td>
-                      <td className="text-right">{item.credit}</td>
-                      <td className="text-right">{item.balance}</td>
-                    </tr>
-                  ))}
-                  {walletEntries.length === 0 && (
+              {selectedUserId && (
+                <table className="ledger-table">
+                  <thead>
                     <tr>
-                      <td colSpan="6" style={{ textAlign: "center" }}>No records found</td>
+                      <th>Date</th>
+                      <th>Document</th>
+                      <th>Narration</th>
+                      <th>Debit</th>
+                      <th>Credit</th>
+                      <th>Balance</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            ) : (
-              <p>Please select a user to view their wallet ledger.</p>
-            )}
+                  </thead>
+                  <tbody>
+                    {calculateLedger().map((row, i) => (
+                      <tr key={i}>
+                        <td>{row.date}</td>
+                        <td>{row.document}</td>
+                        <td>{row.narration}</td>
+                        <td>{row.debit}</td>
+                        <td>{row.credit}</td>
+                        <td>{row.balance}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
 
@@ -270,70 +273,42 @@ const AdminDashboard = () => {
           <div className="voucher-form">
             <h2>Wallet Voucher</h2>
 
-            <div style={{ marginBottom: "15px" }}>
-              <label>Select User <span className="required-star">*</span></label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-              >
-                <option value="">Select User</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.email}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <label>Select User *</label>
+            <UserSearch />
 
-            <div className="form-row">
-              <div>
-                <label>Date <span className="required-star">*</span></label>
-                <input
-                  type="date"
-                  name="date"
-                  value={voucherData.date}
-                  onChange={handleVoucherChange}
-                />
-              </div>
-            </div>
+            <label>Date *</label>
+            <input
+              type="date"
+              name="date"
+              value={voucherData.date}
+              onChange={handleVoucherChange}
+            />
 
-            <div className="form-row">
-              <div>
-                <label>Voucher Type <span className="required-star">*</span></label>
-                <select
-                  name="voucherType"
-                  value={voucherData.voucherType}
-                  onChange={handleVoucherChange}
-                >
-                  <option>Receipt</option>
-                  <option>Bank Receipt</option>
-                  <option>Development Charges</option>
-                  <option>Subscription</option>
-                  <option>Rewards</option>
-                  <option>Custom Development</option>
-                  <option>Cloud Space</option>
-                  <option>Additional User</option>
-                  <option>Mobile App Renewal</option>
-                  <option>Additional Mobile Users</option>
-                </select>
-              </div>
+            <label>Voucher Type *</label>
+            <select
+              name="voucherType"
+              value={voucherData.voucherType}
+              onChange={handleVoucherChange}
+            >
+              <option>Receipt</option>
+              <option>Bank Receipt</option>
+              <option>Development Charges</option>
+              <option>Subscription</option>
+              <option>Rewards</option>
+              <option>Custom Development</option>
+            </select>
 
-              <div>
-                <label>Amount <span className="required-star">*</span></label>
-                <input
-                  type="number"
-                  name="amount"
-                  placeholder="Amount"
-                  value={voucherData.amount}
-                  onChange={handleVoucherChange}
-                />
-              </div>
-            </div>
+            <label>Amount *</label>
+            <input
+              type="number"
+              name="amount"
+              value={voucherData.amount}
+              onChange={handleVoucherChange}
+            />
 
             <label>Narration (Optional)</label>
             <textarea
               name="narration"
-              placeholder="Narration"
               value={voucherData.narration}
               onChange={handleVoucherChange}
             />
